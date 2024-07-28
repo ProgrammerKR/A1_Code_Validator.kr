@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All-in-One Code Validator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .CodeMirror {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 300px;
+            line-height: 1.5;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+
+        #resultMessage {
+            font-weight: bold;
+            color: #333;
+        }
+
+        #resultErrors {
+            white-space: pre-wrap;
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>All-in-One Code Validator</h1>
+        <textarea id="codeInput"></textarea>
+      <br><br>
+        <button type="button" onclick="validateCode()">Find Errors</button>
+        <div id="result">
+            <p id="resultMessage"></p>
+            <pre id="resultErrors"></pre>
+        </div>
+    </div>
+
+    <!-- CodeMirror -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+    <script>
+        // Initialize CodeMirror
+        const editor = CodeMirror.fromTextArea(document.getElementById('codeInput'), {
+            lineNumbers: true,
+            mode: 'text/html',
+            theme: 'default'
+        });
+
+        function validateCode() {
+            // Get code from the CodeMirror editor
+            const code = editor.getValue().split('\n');
+
+            let resultMessage = 'No errors found!';
+            let resultErrors = '';
+
+            // Separate code into potential HTML, CSS, JavaScript, and Python
+            let htmlCode = [];
+            let cssCode = [];
+            let jsCode = [];
+            let pythonCode = [];
+            
+            let currentLanguage = 'html';
+
+            code.forEach((line, lineIndex) => {
+                const trimmedLine = line.trim();
+
+                if (trimmedLine.startsWith('/* CSS */')) {
+                    currentLanguage = 'css';
+                } else if (trimmedLine.startsWith('/* JavaScript */')) {
+                    currentLanguage = 'js';
+                } else if (trimmedLine.startsWith('/* Python */')) {
+                    currentLanguage = 'python';
+                } else {
+                    switch (currentLanguage) {
+                        case 'html':
+                            htmlCode.push({ line: trimmedLine, lineIndex });
+                            break;
+                        case 'css':
+                            cssCode.push({ line: trimmedLine, lineIndex });
+                            break;
+                        case 'js':
+                            jsCode.push({ line: trimmedLine, lineIndex });
+                            break;
+                        case 'python':
+                            pythonCode.push({ line: trimmedLine, lineIndex });
+                            break;
+                        default:
+                            htmlCode.push({ line: trimmedLine, lineIndex });
+                            break;
+                    }
+                }
+            });
+
+            // Validate HTML
+            let htmlErrors = validateHTML(htmlCode);
+            if (htmlErrors.length > 0) {
+                resultErrors += 'HTML Errors:\n' + htmlErrors.join('\n') + '\n';
+            }
+
+            // Validate CSS
+            let cssErrors = validateCSS(cssCode);
+            if (cssErrors.length > 0) {
+                resultErrors += 'CSS Errors:\n' + cssErrors.join('\n') + '\n';
+            }
+
+            // Validate JavaScript
+            let jsErrors = validateJavaScript(jsCode);
+            if (jsErrors.length > 0) {
+                resultErrors += 'JavaScript Errors:\n' + jsErrors.join('\n') + '\n';
+            }
+
+            // Validate Python
+            let pythonErrors = validatePython(pythonCode);
+            if (pythonErrors.length > 0) {
+                resultErrors += 'Python Errors:\n' + pythonErrors.join('\n') + '\n';
+            }
+
+            if (resultErrors === '') {
+                resultMessage = 'All code is error-free!';
+            }
+
+            document.getElementById('resultMessage').textContent = resultMessage;
+            document.getElementById('resultErrors').textContent = resultErrors;
+        }
+
+        function validateHTML(lines) {
+            let errors = [];
+            lines.forEach(({ line, lineIndex }) => {
+                if (line.includes('<') && !line.includes('>')) {
+                    errors.push(formatError('HTML', lineIndex + 1, 'Unclosed tag.'));
+                }
+            });
+            return errors;
+        }
+
+        function validateCSS(lines) {
+            let errors = [];
+            lines.forEach(({ line, lineIndex }) => {
+                if (line.includes('{') && !line.includes('}')) {
+                    errors.push(formatError('CSS', lineIndex + 1, 'Missing closing brace.'));
+                }
+            });
+            return errors;
+        }
+
+        function validateJavaScript(lines) {
+            let errors = [];
+            lines.forEach(({ line, lineIndex }) => {
+                if (line.includes('console.log')) {
+                    errors.push(formatError('JavaScript', lineIndex + 1, 'Avoid using console.log in production code.'));
+                }
+            });
+            return errors;
+        }
+
+        function validatePython(lines) {
+            let errors = [];
+            lines.forEach(({ line, lineIndex }) => {
+                if (line.includes('print(')) {
+                    errors.push(formatError('Python', lineIndex + 1, 'Avoid using print statements in production code.'));
+                }
+            });
+            return errors;
+        }
+
+        function formatError(language, lineNumber, message) {
+            return `[${language}] Line ${lineNumber}: ${message}`;
+        }
+    </script>
+</body>
+</html>
